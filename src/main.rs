@@ -4,6 +4,7 @@ use layout::Layout;
 use log::LevelFilter;
 use std::env;
 use std::io;
+use std::process::exit;
 use systemd_journal_logger::JournalLog;
 
 use tokio::io::AsyncBufReadExt;
@@ -32,13 +33,19 @@ async fn main() -> std::io::Result<()> {
         "{}/hypr/{}/.socket.sock",
         xdg_runtime_dir, hyprland_instance_signature
     );
+    log::info!("sock2_path is {}", sock2_path);
+    log::info!("sock_path is {}", sock2_path);
     let stream = UnixStream::connect(sock2_path).await?;
     let mut events_socket_stream = BufStream::new(stream);
     let mut buf: Vec<u8> = vec![];
     let mut current_active_window_id: Option<String> = None;
     let mut windows_layouts: HashMap<String, Layout> = HashMap::new();
     loop {
-        let _ = events_socket_stream.read_until(b'\n', &mut buf).await?;
+        let bytes_read = events_socket_stream.read_until(b'\n', &mut buf).await?;
+        if bytes_read == 0 {
+            log::info!("reached eof, exiting");
+            exit(0);
+        }
         let event: String = String::from_utf8(buf.clone()).unwrap();
         buf.clear();
         if event.starts_with(ACTIVE_WINDOW_KEY) {
