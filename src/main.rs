@@ -43,6 +43,8 @@ async fn main() -> std::io::Result<()> {
     loop {
         let bytes_read = events_socket_stream.read_until(b'\n', &mut buf).await?;
         if bytes_read == 0 {
+            // This happens when Hyprland is exiting
+            // we need to exit as well
             log::info!("reached eof, exiting");
             exit(0);
         }
